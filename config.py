@@ -14,6 +14,8 @@ class Settings(BaseSettings):
 
     STEPIK_USER_DATA_DIR: str
 
+    stepik_web: str = Field(validation_alias="STEPIK_WEB")
+
     @property
     def stepik_user_data_dir(self) -> Path:
         return Path(self.STEPIK_USER_DATA_DIR)
