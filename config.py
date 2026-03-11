@@ -10,6 +10,8 @@ class Settings(BaseSettings):
     retry_attempts: int = Field(validation_alias="RETRY_ATTEMPTS")
     timeout: int = Field(validation_alias="TIMEOUT") # мс для playwright
 
+    log_level: str = Field(validation_alias="LOG_LEVEL")
+
     STEPIK_USER_DATA_DIR: str
 
     @property
