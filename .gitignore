@@ -1,0 +1,6 @@
+# JetBrains (PyCharm, IntelliJ IDEA)
+.idea/
+*.iml
+
+# Окружение и конфиги (тоже есть на скрине)
+.env
