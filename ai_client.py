@@ -54,7 +54,7 @@ class AIClient:
         # strip() дополнительно страхует от случайных пробелов в .env.
         resolved_api_key = (api_key or settings.gemini_api_key).strip()
         if not resolved_api_key:
-            raise AIClientConfigError
+            raise AIClientConfigError(("API key не задан."))
 
         # configure() задает ключ для SDK в явной форме.
         # Так код более прозрачен, чем присваивание в genai.api_key.
