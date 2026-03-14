@@ -49,7 +49,7 @@ class TaskDetector:
         best_type, max_score = scores.get_best_match()
 
         if max_score == 0:
-            self.logger.warning("Не удалось определить тип задачи (все счетчики = 0). Fallback: unknown.")
+            self.logger.warning("Не удалось определить тип задачи (все счетчики = 0). Используется тип по умолчанию: unknown.")
             return "unknown"
 
         self.logger.info(f"Определен тип задачи: {best_type} (Очки: {max_score})")
