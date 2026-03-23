@@ -8,7 +8,7 @@ from playwright.async_api import (
     TimeoutError as PlaywrightTimeoutError,
 )
 
-from config import settings
+from src.config import settings
 from schemas import ChoiceTaskData, OrderingTaskData
 from exceptions import DOMElementNotFoundError, InvalidAnswerIndicesError
 from retry_utils import retry_on_dom
@@ -56,6 +56,14 @@ class StepikBrowserHandler:
             "button.s-btn[type='submit']",
             "button[type='submit']",
             "button:has-text('Отправить')",
+        )
+        self.RETRY_BUTTON_CANDIDATES = (
+            "button:has-text('Решить снова')",
+            "a:has-text('Решить снова')",
+            "button:has-text('Попробовать снова')",
+            "a:has-text('Попробовать снова')",
+            "button:has-text('Try again')",
+            "a:has-text('Try again')",
         )
 
         # ══════════════════════════════════════════════════════════
@@ -198,10 +206,43 @@ class StepikBrowserHandler:
         )
 
     async def click_submit_button(self) -> None:
-        btn = await self._wait_for_clickable_submit_button()
-        self._feedback_baseline = await self._read_feedback_signature()
-        await btn.click()
-        logger.info("Кнопка «Отправить» нажата.")
+        last_error: Exception | None = None
+        for attempt in range(1, 4):
+            try:
+                btn = await self._wait_for_clickable_submit_button()
+                self._feedback_baseline = await self._read_feedback_signature()
+                await btn.click()
+                logger.info("Кнопка «Отправить» нажата.")
+                return
+            except (DOMElementNotFoundError, PlaywrightTimeoutError, PlaywrightError) as exc:
+                last_error = exc
+                logger.warning(
+                    "Не удалось нажать кнопку «Отправить» (попытка %d/3): %s",
+                    attempt,
+                    exc,
+                )
+                if attempt < 3:
+                    await self.page.wait_for_timeout(300)
+
+        raise DOMElementNotFoundError(
+            "Кнопка отправки не найдена или не кликабельна после 3 попыток."
+        ) from last_error
+
+    async def click_retry_button_if_available(self) -> bool:
+        """Нажимает кнопку повторного решения (если доступна)."""
+        for selector in self.RETRY_BUTTON_CANDIDATES:
+            retry_btn = self.page.locator(f"{self.QUIZ_WRAPPER} {selector}").first
+            try:
+                await retry_btn.wait_for(state="visible", timeout=1500)
+                if not await retry_btn.is_enabled():
+                    continue
+                await retry_btn.scroll_into_view_if_needed(timeout=1500)
+                await retry_btn.click()
+                logger.info("Нажата кнопка повторного решения: %s", selector)
+                return True
+            except (PlaywrightTimeoutError, PlaywrightError):
+                continue
+        return False
 
     # ================================================================
     #  CHOICE — тест с вариантами
@@ -291,7 +332,9 @@ class StepikBrowserHandler:
 
     @retry_on_dom
     async def submit_string_answer(self, answer: str) -> None:
-        field = self.page.locator("textarea, input[type='text']").first
+        field = self.page.locator(
+            self._scoped("textarea, input[type='text']")
+        ).first
         await field.wait_for(state="visible", timeout=5000)
         await field.fill(answer)
         await self.click_submit_button()

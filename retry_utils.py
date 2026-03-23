@@ -10,7 +10,7 @@ from tenacity import (
 )
 from playwright.async_api import TimeoutError as PlaywrightTimeoutError
 
-from config import settings
+from src.config import settings
 from exceptions import DOMElementNotFoundError
 
 logger = logging.getLogger(__name__)

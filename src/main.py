@@ -16,7 +16,7 @@ from orchestration.navigation import ensure_course_started
 from orchestration.step_processor import process_step
 
 setup_logging()
-logger = logging.getLogger("Orchestrator")
+logger = logging.getLogger(__name__)
 
 async def main():
     logger.info("=== Запуск Stepik-Solver ===")
@@ -65,8 +65,13 @@ async def main():
                 next_btn = page.locator("button.lesson__next-btn:visible").first
                 await next_btn.wait_for(state="visible", timeout=5000)
                 logger.info(">>> Переход на следующий шаг >>>")
+                previous_url = page.url
                 await next_btn.click()
-                await page.wait_for_url("**", timeout=5000)
+                await page.wait_for_function(
+                    "prevUrl => window.location.href !== prevUrl",
+                    arg=previous_url,
+                    timeout=5000,
+                )
             except PlaywrightTimeoutError:
                 logger.info("Кнопка 'Следующий шаг' не найдена. Возможно, модуль пройден!")
                 break

@@ -2,7 +2,7 @@ import logging
 
 from playwright.async_api import Page, TimeoutError as PlaywrightTimeoutError
 
-from config import settings
+from src.config import settings
 
 logger = logging.getLogger(__name__)
 

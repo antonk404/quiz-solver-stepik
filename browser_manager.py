@@ -3,7 +3,7 @@ from typing import Optional
 
 from playwright.async_api import async_playwright, BrowserContext
 
-from config import settings
+from src.config import settings
 
 
 logger = logging.getLogger(__name__)
