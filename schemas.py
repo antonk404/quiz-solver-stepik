@@ -1,39 +1,37 @@
-from pydantic import BaseModel, Field
-from typing import Literal, List, Union
+from typing import Literal
+
+from pydantic import AliasChoices, BaseModel, Field
 
 
-# Модели для ответов Gemini
 class ChoiceResponse(BaseModel):
-    type: Literal["choice"]
-    selected_indices: List[int] = Field(description="Список индексов правильных ответов (0-based)")
+    type: Literal["choice"] = "choice"
+    selected_indices: list[int] = Field(description="Список индексов правильных ответов (0-based)")
     reasoning: str
 
 
 class StringResponse(BaseModel):
-    type: Literal["string"]
+    type: Literal["string"] = "string"
     answer: str
     reasoning: str
 
 
 class OrderingResponse(BaseModel):
-    type: Literal["ordering"]
-    ordered_indices: List[int] = Field(description="Новый порядок индексов элементов")
+    type: Literal["ordering"] = "ordering"
+    ordered_indices: list[int] = Field(description="Новый порядок индексов элементов")
     reasoning: str
 
 
-class TableResponse(BaseModel):
-    type: Literal["table"]
-    # Словарь: ключ - строка (строка таблицы), значение - столбец (столбец таблицы)
-    mapping: dict[str, str]
-    reasoning: str
+class ChoiceTaskData(BaseModel):
+    """Модель данных, извлеченных со страницы для задачи типа Choice."""
+    question: str = Field(description="Текст запроса")
+    options: list[str] = Field(
+        description="Список вариантов",
+        validation_alias=AliasChoices("options", "option"),
+    )
 
 
-# Главный тип для валидации ответа от Gemini
-TaskResponse = Union[ChoiceResponse, StringResponse, OrderingResponse, TableResponse]
-
-
-class TaskCache(BaseModel):
-    question_hash: str
-    last_response: TaskResponse
-    is_correct: bool = False
-
+class OrderingTaskData(BaseModel):
+    """Данные для задачи на сопоставление/упорядочивание."""
+    question: str
+    left_items: list[str]
+    right_items: list[str]

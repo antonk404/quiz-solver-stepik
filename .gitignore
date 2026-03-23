@@ -1,47 +1,65 @@
-# JetBrains (PyCharm, IntelliJ IDEA)
+# --- OS / editor ---
+.DS_Store
+Thumbs.db
+
 .idea/
 *.iml
+.vscode/
 
-# Python bytecode and caches
+# --- Python bytecode / caches ---
 __pycache__/
 *.py[cod]
 *.pyo
 *.pyd
 *.py,cover
+.python-version
 
-# Build / packaging
+# --- Packaging / distribution ---
 build/
 dist/
+site/
 *.egg-info/
 .eggs/
 pip-wheel-metadata/
 
-# Tool caches
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
-.coverage
-.coverage.*
-htmlcov/
-
-# Virtual environments
+# --- Virtual environments ---
 .venv/
 venv/
 env/
 ENV/
 
-# Local environment files
+# --- Testing / tooling caches ---
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.hypothesis/
+.tox/
+.nox/
+
+# --- Coverage ---
+.coverage
+.coverage.*
+htmlcov/
+
+# --- Logs / runtime artifacts ---
+*.log
+*.pid
+*.out
+*.err
+
+# --- Local secrets ---
 .env
 .env.*
 !.env.example
 
-# Logs and local runtime artifacts
-*.log
-*.pid
-
-# Playwright / browser profile data
+# --- Playwright artifacts ---
 browser_session/
+playwright-report/
+test-results/
 
-# OS files
-.DS_Store
-Thumbs.db
+# --- Local lock / DB files ---
+uv.lock
+Pipfile.lock
+poetry.lock
+*.sqlite3
+coverage.xml

@@ -3,7 +3,7 @@ from typing import Optional
 
 from playwright.async_api import async_playwright, BrowserContext
 
-from config import settings
+from src.config import settings
 
 
 logger = logging.getLogger(__name__)
@@ -21,7 +21,7 @@ class BrowserManager:
         # Убеждаемся, что папка для профиля существует
         settings.stepik_user_data_dir.mkdir(parents=True, exist_ok=True)
 
-        logger.info(f"Запуск браузера. Профиль: {settings.stepik_user_data_dir}")
+        logger.info("Запуск браузера. Профиль: %s", settings.stepik_user_data_dir)
 
         # launch_persistent_context сохраняет куки, кэш и localStorage
         self.context = await self._playwright.chromium.launch_persistent_context(
@@ -47,6 +47,6 @@ class BrowserManager:
             self._playwright = None
 
         if exc_type:
-            logger.error(f"Браузер закрыт из-за ошибки: {exc_val}")
+            logger.error("Браузер закрыт из-за ошибки: %s", exc_val)
         else:
             logger.info("Браузер штатно закрыт.")
