@@ -14,15 +14,15 @@ from tenacity import (
 )
 
 from src.config import settings
-from exceptions import (
+from src.exceptions import (
     AIClientConfigError,
     AIClientInputError,
     AIClientRegionUnsupportedError,
     AIClientResponseError,
 )
-from schemas import ChoiceResponse, OrderingResponse, StringResponse
-from retry_utils import retry_on_api
-from validation_utils import validate_ordered_indices, validate_selected_indices
+from src.schemas import ChoiceResponse, OrderingResponse, StringResponse
+from src.retry_utils import retry_on_api
+from src.validation_utils import validate_ordered_indices, validate_selected_indices
 
 logger = logging.getLogger(__name__)
 
@@ -103,6 +103,9 @@ _GROQ_SCHEMA_HINTS: dict[str, str] = {
 
 _GROQ_SYSTEM_MSG = (
     "Ты — эксперт по решению учебных заданий. "
+    "Проходишь курс на stepik"
+    "1) БФУ им.Канта .Курс «Философия» ссылка -https://stepik.org/course/6667/syllabus"
+    "2) БФУ им.Канта .Курс «История философии» Ссылка -https://stepik.org/course/11811)"
     "ВСЕГДА отвечай ТОЛЬКО валидным JSON строго по указанной схеме. "
     "Никакого текста вне JSON."
 )

@@ -63,3 +63,5 @@ Pipfile.lock
 poetry.lock
 *.sqlite3
 coverage.xml
+
+.ai

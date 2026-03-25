@@ -1,86 +1,66 @@
+"""Точка входа."""
+
 import asyncio
 import logging
-import sys
 
-from playwright.async_api import TimeoutError as PlaywrightTimeoutError
+from playwright.async_api import async_playwright
 
-from ai_client import AIClient
-from browser_manager import BrowserManager
-from exceptions import AppError
-from logging_config import setup_logging
-from config import settings
+from src.config import settings
+from src.logging_config import setup_logging
+from src.ai_client import AIClient
+from src.stepik import StepikHTTPClient, StepikAPIClient
+from src.stepik.utils import parse_course_id
+from src.orchestration import (
+    create_default_registry,
+    StepProcessor,
+    CourseProcessor,
+)
 
-# Импортируем напрямую из пакета orchestration
-from orchestration.auth import ensure_logged_in
-from orchestration.navigation import ensure_course_started
-from orchestration.step_processor import process_step
-
-setup_logging()
 logger = logging.getLogger(__name__)
 
-async def main():
-    logger.info("=== Запуск Stepik-Solver ===")
 
-    ai_client = AIClient(temperature=0.2, max_reasks=settings.ai_max_reasks)
-    ai_unavailable_notified = False
+async def main() -> None:
+    setup_logging()
 
-    async with BrowserManager() as context:
-        page = context.pages[0] if context.pages else await context.new_page()
+    # Валидация на старте
+    course_url = settings.stepik_course_url
+    if not course_url:
+        logger.error(
+            "Укажите STEPIK_COURSE_URL в .env\n"
+            "Пример: STEPIK_COURSE_URL="
+            "https://stepik.org/course/6667/syllabus"
+        )
+        return
 
-        await ensure_logged_in(page)
+    course_id = parse_course_id(course_url)
+    if not course_id:
+        logger.error("Не удалось извлечь ID курса из URL: %s", course_url)
+        return
 
-        logger.info("Переходим по ссылке: %s", settings.stepik_web)
-        await page.goto(settings.stepik_web, wait_until="domcontentloaded")
+    logger.info("Курс: %s (id=%d)", course_url, course_id)
 
-        await ensure_course_started(page)
+    ai = AIClient()
+    registry = create_default_registry()
 
-        while True:
-            logger.info("Ожидание рендеринга шага...")
-            await asyncio.sleep(max(0.0, settings.main_loop_delay_sec))
+    async with async_playwright() as pw:
+        browser = await pw.chromium.launch(headless=False)
+        context = await browser.new_context()
+        page = await context.new_page()
 
-            try:
-                step_result = await process_step(page, ai_client)
-            except AppError as exc:
-                logger.error("Ошибка решения шага: %s", exc)
-                break
+        await page.goto(course_url, wait_until="domcontentloaded")
+        input("\n🔑 Залогиньтесь в Stepik и нажмите Enter...\n")
 
-            if not step_result.success:
-                logger.warning("Остановка автоматического прохождения.")
-                break
+        async with StepikHTTPClient(page) as http:
+            api = StepikAPIClient(http)
 
-            if step_result.ai_unavailable:
-                if not ai_unavailable_notified:
-                    logger.warning(
-                        "Автоматическое решение временно недоступно (ограничение Gemini по региону). "
-                        "Браузер остается открытым для ручного прохождения."
-                    )
-                    ai_unavailable_notified = True
-                continue
+            step_proc = StepProcessor(page, ai, api, registry)
+            course_proc = CourseProcessor(step_proc)
 
-            if step_result.advanced_to_next:
-                logger.info(">>> Переход на следующий шаг выполнен сразу (ответ уже верный) >>>")
-                continue
+            solved = await course_proc.process_course(course_id)
+            logger.info("🎓 Итого: %d шагов.", solved)
 
-            try:
-                next_btn = page.locator("button.lesson__next-btn:visible").first
-                await next_btn.wait_for(state="visible", timeout=5000)
-                logger.info(">>> Переход на следующий шаг >>>")
-                previous_url = page.url
-                await next_btn.click()
-                await page.wait_for_function(
-                    "prevUrl => window.location.href !== prevUrl",
-                    arg=previous_url,
-                    timeout=5000,
-                )
-            except PlaywrightTimeoutError:
-                logger.info("Кнопка 'Следующий шаг' не найдена. Возможно, модуль пройден!")
-                break
+        await browser.close()
 
-    logger.info("=== Работа Stepik-Solver завершена ===")
 
 if __name__ == "__main__":
-    try:
-        asyncio.run(main())
-    except KeyboardInterrupt:
-        logger.info("Программа принудительно остановлена (Ctrl+C).")
-        sys.exit(0)
+    asyncio.run(main())
