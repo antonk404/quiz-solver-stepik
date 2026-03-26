@@ -1,0 +1,27 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    ports:
+      - "6080:6080"
+    volumes:
+      - cookies:/app/cookies
+    shm_size: "2gb"
+    init: true
+    stdin_open: true
+    tty: true
+    deploy:
+      resources:
+        limits:
+          memory: 3G
+          cpus: "2.0"
+        reservations:
+          memory: 1G
+          cpus: "0.5"
+    # restart: unless-stopped
+
+volumes:
+  cookies:

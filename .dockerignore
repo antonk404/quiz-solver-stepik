@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+
+# Секреты
+.env
+.env.*
+
+# Git
+.git/
+.gitignore
+
+# IDE
+.idea/
+.vscode/
+
+# Документация
+*.md
+LICENSE
+
+# Сессии и кэш
+browser_session/
+cookies/
+
+# Docker-файлы (не нужны ВНУТРИ образа)
+Dockerfile
+docker-compose.yaml
