@@ -26,9 +26,6 @@ from src.validation_utils import validate_ordered_indices, validate_selected_ind
 
 logger = logging.getLogger(__name__)
 
-# ══════════════════════════════════════════════════════════════════
-#  Groq SDK — опциональный импорт
-# ══════════════════════════════════════════════════════════════════
 try:
     from groq import AsyncGroq
     from groq import (
@@ -43,7 +40,6 @@ except ImportError:
     GROQ_AVAILABLE = False
     AsyncGroq = None  # type: ignore
 
-    # Заглушки, чтобы isinstance() не падал при отсутствии пакета
     class _GroqStub(Exception):
         pass
 
@@ -53,7 +49,6 @@ except ImportError:
     GroqAuthenticationError = _GroqStub  # type: ignore
 
 
-# ── Retry-декоратор для транзиентных ошибок Groq ─────────────────
 def _is_groq_transient(exc: BaseException) -> bool:
     """500/502/503/529 и обрывы соединения — стоит повторить."""
     if isinstance(exc, GroqAPIConnectionError):
@@ -71,14 +66,11 @@ if GROQ_AVAILABLE:
         reraise=True,
     )
 else:
-    # Пакет не установлен → декоратор-заглушка
     def _retry_groq(fn):  # type: ignore
+        """Возвращает функцию без ретраев, если SDK Groq недоступен."""
         return fn
 
 
-# ══════════════════════════════════════════════════════════════════
-#  JSON-схема для Groq (нет native response_schema)
-# ══════════════════════════════════════════════════════════════════
 _GROQ_SCHEMA_HINTS: dict[str, str] = {
     "ChoiceResponse": (
         "Требуемый JSON:\n"
@@ -111,17 +103,8 @@ _GROQ_SYSTEM_MSG = (
 )
 
 
-# ══════════════════════════════════════════════════════════════════
-#  AIClient
-# ══════════════════════════════════════════════════════════════════
 class AIClient:
-    """Мульти-провайдерный AI-клиент: Gemini + Groq.
-
-    Режимы (``AI_PROVIDER``):
-    * ``gemini`` — только Google Gemini
-    * ``groq``   — только Groq (llama-3.3-70b-versatile по умолчанию)
-    * ``auto``   — Gemini → Groq (fallback при исчерпании квоты)
-    """
+    """Мульти-провайдерный клиент Gemini/Groq с fallback по моделям."""
 
     def __init__(
         self,
@@ -131,6 +114,7 @@ class AIClient:
         temperature: float = 0.1,
         max_reasks: int = 2,
     ):
+        """Инициализирует клиентов, модели и базовые параметры генерации."""
         self.temperature = temperature
         self.max_reasks = max_reasks
         if self.max_reasks < 0:
@@ -138,12 +122,10 @@ class AIClient:
 
         self._region_unsupported = False
 
-        # Провайдер определяем заранее, чтобы корректно инициализировать только нужные клиенты.
         self.ai_provider: str = getattr(
             settings, "ai_provider", "auto"
         ).lower().strip()
 
-        # ── Gemini ──────────────────────────────────────────────
         resolved_models = self._parse_model_candidates(
             model_name or settings.gemini_model
         )
@@ -153,7 +135,6 @@ class AIClient:
         self.gemini_model_candidates = resolved_models
         self.model_name = resolved_models[0]
 
-        # Для режима groq-only Gemini не обязателен.
         self.gemini_client: genai.Client | None = None
         should_init_gemini = self.ai_provider in ("gemini", "auto") or client is not None
         if should_init_gemini:
@@ -181,13 +162,10 @@ class AIClient:
             )
         ]
 
-        # ── Groq ────────────────────────────────────────────────
         self._init_groq()
 
-    # ────────────────────────────────────────────────────────────
-    #  Groq init
-    # ────────────────────────────────────────────────────────────
     def _init_groq(self) -> None:
+        """Инициализирует Groq-клиент и список моделей, если доступен ключ и SDK."""
         groq_key = getattr(settings, "groq_api_key", "").strip()
 
         if not groq_key or not GROQ_AVAILABLE:
@@ -207,9 +185,6 @@ class AIClient:
         self.groq_model_candidates = self._parse_model_candidates(raw_model)
         logger.info("Groq инициализирован: модели=%s", self.groq_model_candidates)
 
-    # ────────────────────────────────────────────────────────────
-    #  Model sequence (Gemini → Groq)
-    # ────────────────────────────────────────────────────────────
     def _get_model_sequence(self) -> list[tuple[str, str]]:
         """Упорядоченный список ``(provider, model_name)``."""
         seq: list[tuple[str, str]] = []
@@ -230,11 +205,9 @@ class AIClient:
             )
         return seq
 
-    # ────────────────────────────────────────────────────────────
-    #  Утилиты
-    # ────────────────────────────────────────────────────────────
     @staticmethod
     def _parse_model_candidates(raw_models: str) -> list[str]:
+        """Парсит строку моделей в список без дублей и пустых значений."""
         chunks = raw_models.replace(";", ",").replace("\n", ",").split(",")
         seen: set[str] = set()
         result: list[str] = []
@@ -247,6 +220,7 @@ class AIClient:
 
     @staticmethod
     def _validate_inputs(question: str, options: list[str]) -> None:
+        """Проверяет вопрос и список вариантов для choice-задачи."""
         if not question or not question.strip():
             raise AIClientInputError("Вопрос должен быть непустой строкой.")
         if not options:
@@ -256,14 +230,17 @@ class AIClient:
 
     @staticmethod
     def _validate_selected_indices(indices: list[int], cnt: int) -> None:
+        """Проверяет корректность выбранных индексов ответа."""
         validate_selected_indices(indices, cnt, exc_type=AIClientResponseError)
 
     @staticmethod
     def _validate_ordered_indices(indices: list[int], cnt: int) -> None:
+        """Проверяет корректность permutation-индексов для ordering."""
         validate_ordered_indices(indices, cnt, exc_type=AIClientResponseError)
 
     @staticmethod
     def _build_reask_block(feedback: str | None) -> str:
+        """Формирует блок prompt с фидбеком для повторной попытки."""
         if not feedback:
             return ""
         return dedent(f"""
@@ -274,6 +251,7 @@ class AIClient:
 
     @staticmethod
     def _format_reask_reason(exc: Exception) -> str:
+        """Преобразует ошибку в короткий текст для re-ask."""
         if isinstance(exc, ValidationError):
             errors = exc.errors(include_url=False)
             if errors:
@@ -284,11 +262,9 @@ class AIClient:
             return "JSON не по схеме."
         return str(exc) or "Ответ не прошел проверку."
 
-    # ────────────────────────────────────────────────────────────
-    #  Prompt builders
-    # ────────────────────────────────────────────────────────────
     @classmethod
     def _build_choice_prompt(cls, question, options, validation_feedback=None):
+        """Собирает prompt для задачи выбора вариантов."""
         opts_text = "\n".join(f"[{i}] {o.strip()}" for i, o in enumerate(options))
         reask = cls._build_reask_block(validation_feedback)
         return dedent(f"""
@@ -307,6 +283,7 @@ class AIClient:
 
     @classmethod
     def _build_ordering_prompt(cls, question, left_items, right_items, validation_feedback=None):
+        """Собирает prompt для задач matching/sorting."""
         left_text = "\n".join(f"[{i}] {it.strip()}" for i, it in enumerate(left_items))
         right_text = "\n".join(f"[{i}] {it.strip()}" for i, it in enumerate(right_items))
         reask = cls._build_reask_block(validation_feedback)
@@ -334,6 +311,7 @@ class AIClient:
 
     @classmethod
     def _build_string_prompt(cls, question, validation_feedback=None):
+        """Собирает prompt для текстового ответа."""
         reask = cls._build_reask_block(validation_feedback)
         return dedent(f"""
             Ты - эксперт, помогающий решать учебные задания.
@@ -344,11 +322,9 @@ class AIClient:
             {reask}
         """).strip()
 
-    # ────────────────────────────────────────────────────────────
-    #  Error builders
-    # ────────────────────────────────────────────────────────────
     @staticmethod
     def _build_api_error(exc: Exception) -> AIClientResponseError:
+        """Нормализует ошибки Gemini в доменные исключения."""
         error_text = str(exc)
         upper = error_text.upper()
 
@@ -376,6 +352,7 @@ class AIClient:
 
     @staticmethod
     def _build_groq_error(exc: Exception) -> AIClientResponseError:
+        """Нормализует ошибки Groq в доменные исключения."""
         if isinstance(exc, GroqAuthenticationError):
             return AIClientConfigError("Неверный GROQ_API_KEY.")
         if isinstance(exc, GroqRateLimitError):
@@ -394,6 +371,7 @@ class AIClient:
 
     @staticmethod
     def _is_daily_quota_error(exc: Exception) -> bool:
+        """Проверяет, что ошибка связана с суточной квотой Gemini."""
         upper = str(exc).upper()
         return (
             "GENERATEREQUESTSPERDAYPERPROJECTPERMODEL-FREETIER" in upper
@@ -401,7 +379,7 @@ class AIClient:
         )
 
     def _is_provider_quota_error(self, exc: Exception, provider: str) -> bool:
-        """Квота провайдера исчерпана — стоит переключиться на следующую модель."""
+        """Определяет квотную ошибку, при которой нужно переключить модель."""
         if provider == "gemini":
             return self._is_daily_quota_error(exc)
         if provider == "groq":
@@ -411,6 +389,7 @@ class AIClient:
     def _build_provider_error(
         self, exc: Exception, provider: str
     ) -> AIClientResponseError:
+        """Преобразует ошибку конкретного провайдера в унифицированную."""
         if provider == "gemini":
             err = self._build_api_error(exc)
             if isinstance(err, AIClientRegionUnsupportedError):
@@ -420,13 +399,11 @@ class AIClient:
             return self._build_groq_error(exc)
         return AIClientResponseError(str(exc))
 
-    # ────────────────────────────────────────────────────────────
-    #  API request — Gemini
-    # ────────────────────────────────────────────────────────────
     @retry_on_api
     async def _request_json_gemini(
         self, prompt: str, model_name: str, schema: type
     ) -> str:
+        """Запрашивает JSON-ответ у Gemini с `response_schema`."""
         if self.gemini_client is None:
             raise AIClientConfigError("Gemini не инициализирован для текущей конфигурации.")
         response = await self.gemini_client.aio.models.generate_content(
@@ -444,13 +421,11 @@ class AIClient:
             raise AIClientResponseError("Gemini вернул пустой ответ.")
         return raw
 
-    # ────────────────────────────────────────────────────────────
-    #  API request — Groq
-    # ────────────────────────────────────────────────────────────
     @_retry_groq
     async def _request_json_groq(
         self, prompt: str, model_name: str, schema: type
     ) -> str:
+        """Запрашивает JSON-ответ у Groq через chat.completions."""
         if not self.groq_client:
             raise AIClientConfigError("Groq не инициализирован.")
 
@@ -473,9 +448,6 @@ class AIClient:
             raise AIClientResponseError("Groq вернул пустой ответ.")
         return raw
 
-    # ────────────────────────────────────────────────────────────
-    #  Dispatcher
-    # ────────────────────────────────────────────────────────────
     async def _request_json(
         self,
         prompt: str,
@@ -483,13 +455,11 @@ class AIClient:
         schema: type,
         provider: str = "gemini",
     ) -> str:
+        """Маршрутизирует JSON-запрос к выбранному провайдеру."""
         if provider == "groq":
             return await self._request_json_groq(prompt, model_name, schema)
         return await self._request_json_gemini(prompt, model_name, schema)
 
-    # ────────────────────────────────────────────────────────────
-    #  Универсальный цикл решения
-    # ────────────────────────────────────────────────────────────
     async def _solve_loop(
         self,
         task_label: str,
@@ -498,19 +468,12 @@ class AIClient:
         validate_fn,
         extract_result_fn,
     ):
-        """
-        Общий цикл: перебор моделей × reask.
-
-        * ``prompt_fn(feedback) -> str``   — строит prompt
-        * ``validate_fn(result)``          — бросает исключение если невалидно
-        * ``extract_result_fn(result)``    — вызывается перед return для лога
-        """
+        """Перебирает модели и re-ask попытки до валидного результата или ошибки."""
         model_seq = self._get_model_sequence()
         total = len(model_seq)
         total_attempts = self.max_reasks + 1
 
         for pos, (provider, model_name) in enumerate(model_seq, 1):
-            # Gemini заблокирован по региону — пропускаем
             if provider == "gemini" and self._region_unsupported:
                 continue
 
@@ -523,7 +486,6 @@ class AIClient:
             for attempt in range(1, total_attempts + 1):
                 prompt = prompt_fn(validation_feedback)
 
-                # ── Запрос к провайдеру ──────────────────────
                 try:
                     raw_text = await self._request_json(
                         prompt, model_name, schema, provider,
@@ -542,10 +504,9 @@ class AIClient:
                             "Квота %s/%s исчерпана, переключаемся.",
                             provider, model_name,
                         )
-                        break  # → следующая модель
+                        break
                     raise self._build_provider_error(base, provider) from exc
 
-                # ── Парсинг и валидация ──────────────────────
                 try:
                     result = schema.model_validate_json(raw_text)
                     validate_fn(result)
@@ -570,12 +531,10 @@ class AIClient:
             "Все AI-модели исчерпали квоту или недоступны."
         )
 
-    # ════════════════════════════════════════════════════════════
-    #  SOLVE — Choice
-    # ════════════════════════════════════════════════════════════
     async def solve_choice_task(
         self, question: str, options: list[str]
     ) -> ChoiceResponse:
+        """Решает задачу выбора одного/нескольких вариантов ответа."""
         self._validate_inputs(question, options)
         logger.info(
             "Задача 'choice': вариантов=%d, provider=%s",
@@ -603,15 +562,13 @@ class AIClient:
             "choice", ChoiceResponse, prompt_fn, validate_fn, log_fn,
         )
 
-    # ════════════════════════════════════════════════════════════
-    #  SOLVE — Ordering / Matching
-    # ════════════════════════════════════════════════════════════
     async def solve_ordering_task(
         self,
         question: str,
         left_items: list[str],
         right_items: list[str],
     ) -> OrderingResponse:
+        """Решает matching/sorting и возвращает порядок индексов."""
         if not question or not question.strip():
             raise AIClientInputError("Вопрос пуст.")
         if (
@@ -649,10 +606,8 @@ class AIClient:
             "ordering", OrderingResponse, prompt_fn, validate_fn, log_fn,
         )
 
-    # ════════════════════════════════════════════════════════════
-    #  SOLVE — String
-    # ════════════════════════════════════════════════════════════
     async def solve_string_task(self, question: str) -> StringResponse:
+        """Решает текстовую задачу и возвращает строковый ответ."""
         if not question or not question.strip():
             raise AIClientInputError("Вопрос пуст.")
 

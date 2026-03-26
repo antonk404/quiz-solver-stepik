@@ -28,6 +28,7 @@ class TextSolver(BaseSolver):
         attempt: AttemptData,
         previous_reply: dict | None = None,
     ) -> dict:
+        """Решает text/number задачу и возвращает reply в нужном формате."""
         question = step.question_text
 
         if previous_reply is not None:

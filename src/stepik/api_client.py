@@ -39,11 +39,13 @@ class StepikAPIClient:
 
     @staticmethod
     def parse_url(url: str):
+        """Парсит URL шага и возвращает `ParsedStepURL` или `None`."""
         return parse_step_url(url)
 
     # ── Steps ──────────────────────────────────────────────────
 
     async def get_step(self, step_id: int) -> StepData:
+        """Загружает шаг из API и преобразует его в `StepData`."""
         data = await self._http.get(f"/steps/{step_id}")
         response = StepsResponse.model_validate(data)
         raw = response.steps[0]
@@ -60,6 +62,7 @@ class StepikAPIClient:
         )
 
     async def get_lesson_step_ids(self, lesson_id: int) -> list[int]:
+        """Возвращает список step_id урока, используя локальный кэш."""
         if lesson_id in self._lesson_cache:
             return self._lesson_cache[lesson_id]
 
@@ -72,6 +75,7 @@ class StepikAPIClient:
         return ids
 
     async def resolve_step_id(self, lesson_id: int, position: int) -> int:
+        """Преобразует позицию шага в уроке в реальный `step_id`."""
         ids = await self.get_lesson_step_ids(lesson_id)
         idx = position - 1
         if 0 <= idx < len(ids):
@@ -84,6 +88,7 @@ class StepikAPIClient:
     # ── Attempts ───────────────────────────────────────────────
 
     async def create_attempt(self, step_id: int) -> AttemptData:
+        """Создает новую попытку решения шага."""
         data = await self._http.post(
             "/attempts",
             json={"attempt": {"step": str(step_id)}},
@@ -101,6 +106,7 @@ class StepikAPIClient:
     # ── Submissions ────────────────────────────────────────────
 
     async def submit_answer(self, attempt_id: int, reply: dict) -> int:
+        """Отправляет ответ и возвращает идентификатор submission."""
         data = await self._http.post(
             "/submissions",
             json={
@@ -119,6 +125,7 @@ class StepikAPIClient:
         max_polls: int = 20,
         delay: float = 0.5,
     ) -> str:
+        """Ожидает финальный статус проверки submission или таймаут."""
         for _ in range(max_polls):
             data = await self._http.get(f"/submissions/{submission_id}")
             response = SubmissionsResponse.model_validate(data)
@@ -131,6 +138,7 @@ class StepikAPIClient:
         return "timeout"
 
     async def is_step_passed(self, step_id: int) -> bool:
+        """Проверяет, есть ли у шага хотя бы одна корректная отправка."""
         try:
             data = await self._http.get(
                 "/submissions",
@@ -150,6 +158,7 @@ class StepikAPIClient:
     async def get_course_steps(
         self, course_id: int,
     ) -> list[tuple[int, int]]:
+        """Собирает плоский список `(lesson_id, step_id)` для всего курса."""
         data = await self._http.get(f"/courses/{course_id}")
         course = CoursesResponse.model_validate(data).courses[0]
 

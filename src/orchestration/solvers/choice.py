@@ -1,4 +1,4 @@
-"""Солвер для choice с учётом предыдущей ошибки."""
+"""Солвер для choice: сначала программно, потом AI."""
 
 import logging
 
@@ -11,6 +11,7 @@ from src.stepik import (
     build_choice_reply,
     strip_html,
 )
+from src.stepik.solvers import try_solve_choice
 
 from .base import BaseSolver
 
@@ -27,13 +28,26 @@ class ChoiceSolver(BaseSolver):
         attempt: AttemptData,
         previous_reply: dict | None = None,
     ) -> dict:
-        raw_opts = step.source.options or attempt.dataset.get("options", [])
+        """Решает choice: программно → AI."""
+        raw_opts = (
+            step.source.options
+            or attempt.dataset.get("options", [])
+        )
         texts = self._extract_texts(raw_opts)
 
         if not texts:
-            raise DOMElementNotFoundError("Варианты ответов не найдены.")
+            raise DOMElementNotFoundError(
+                "Варианты ответов не найдены."
+            )
 
-        # Формируем подсказку
+        # 1. Попытка программного решения
+        #    (только если это первая попытка)
+        if previous_reply is None:
+            selected = try_solve_choice(step)
+            if selected is not None:
+                return build_choice_reply(selected, len(raw_opts))
+
+        # 2. AI
         hint = (
             " (можно выбрать несколько)"
             if step.is_multiple_choice
@@ -42,22 +56,29 @@ class ChoiceSolver(BaseSolver):
 
         question = step.question_text + hint
 
-        # Если есть предыдущий неверный ответ — сообщаем AI
         if previous_reply is not None:
             wrong_indices = [
-                i for i, v in enumerate(previous_reply.get("choices", []))
+                i for i, v
+                in enumerate(previous_reply.get("choices", []))
                 if v
             ]
-            wrong_texts = [texts[i] for i in wrong_indices if i < len(texts)]
+            wrong_texts = [
+                texts[i] for i in wrong_indices
+                if i < len(texts)
+            ]
             question += (
                 f"\n\nВНИМАНИЕ: предыдущий ответ был НЕВЕРНЫМ. "
                 f"Неправильные варианты: {wrong_texts}. "
                 f"Выбери ДРУГОЙ ответ."
             )
-            logger.info("Повторная попытка: исключаем %s", wrong_texts)
+            logger.info(
+                "Повторная попытка: исключаем %s", wrong_texts
+            )
 
         resp = await ai.solve_choice_task(question, texts)
-        return build_choice_reply(resp.selected_indices, len(raw_opts))
+        return build_choice_reply(
+            resp.selected_indices, len(raw_opts),
+        )
 
     @staticmethod
     def _extract_texts(raw_opts: list) -> list[str]:

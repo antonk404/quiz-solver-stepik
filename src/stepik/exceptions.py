@@ -7,6 +7,7 @@ class StepikAPIError(Exception):
     default_message = "Произошла ошибка в API Stepik."
 
     def __init__(self, message: str | None) -> None:
+        """Создает базовую Stepik-ошибку с переданным или дефолтным текстом."""
         super().__init__(message or self.default_message)
 
 
@@ -25,6 +26,7 @@ class StepikAPITransientError(StepikAPIError):
     default_message = "Транзиентная ошибка сервера."
 
     def __init__(self, status: int, text: str = "") -> None:
+        """Сохраняет HTTP-статус временной ошибки и формирует сообщение."""
         self.status = status
         message = f"HTTP {status}: {text}" if text else f"HTTP {status}"
         super().__init__(message)

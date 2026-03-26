@@ -28,6 +28,7 @@ class SortingSolver(BaseSolver):
         attempt: AttemptData,
         previous_reply: dict | None = None,
     ) -> dict:
+        """Решает sorting программно или через AI и формирует ordering-reply."""
         ordering = try_solve_sorting(step, attempt)
         if ordering is not None:
             return build_ordering_reply(ordering)
@@ -48,5 +49,6 @@ class SortingSolver(BaseSolver):
 
     @staticmethod
     def _extract_items(attempt: AttemptData) -> list[str]:
+        """Извлекает и очищает элементы sorting из dataset options."""
         options = attempt.dataset.get("options", [])
         return [strip_html(str(o)) for o in options]

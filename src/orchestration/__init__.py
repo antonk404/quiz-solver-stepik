@@ -1,13 +1,10 @@
-"""Оркестрация прохождения курса."""
-
-from .solver_registry import create_default_registry, SolverRegistry
-from .step_processor import StepProcessor, ProcessStepResult
+from .solver_registry import SolverRegistry, create_default_registry
+from .step_processor import StepProcessor
 from .course_processor import CourseProcessor
 
 __all__ = [
-    "create_default_registry",
     "SolverRegistry",
+    "create_default_registry",
     "StepProcessor",
-    "ProcessStepResult",
     "CourseProcessor",
 ]
