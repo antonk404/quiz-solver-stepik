@@ -16,7 +16,7 @@ from .schemas import (
     MatchingDataset,
     SortingDataset,
 )
-from .solvers import try_solve_matching, try_solve_sorting
+from .solvers import try_solve_matching, try_solve_sorting, try_solve_choice
 from .reply_builders import (
     build_choice_reply,
     build_ordering_reply,
@@ -46,6 +46,7 @@ __all__ = [
     # Solvers
     "try_solve_matching",
     "try_solve_sorting",
+    "try_solve_choice",
     # Builders
     "build_choice_reply",
     "build_ordering_reply",

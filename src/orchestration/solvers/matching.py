@@ -28,6 +28,7 @@ class MatchingSolver(BaseSolver):
         attempt: AttemptData,
         previous_reply: dict | None = None,
     ) -> dict:
+        """Решает matching программно или через AI и возвращает ordering-reply."""
         logger.info(
             "Matching step_id=%d | dataset keys=%s",
             step.step_id, list(attempt.dataset.keys()),
@@ -44,8 +45,7 @@ class MatchingSolver(BaseSolver):
             raise DOMElementNotFoundError(
                 f"Пустые данные matching. "
                 f"keys={list(attempt.dataset.keys())}, "
-                f"pairs={len(attempt.dataset.get('pairs', []))}, "
-                f"options={len(attempt.dataset.get('options', []))}"
+                f"pairs={len(attempt.dataset.get('pairs', []))}"
             )
 
         question = step.question_text
@@ -63,8 +63,16 @@ class MatchingSolver(BaseSolver):
     def _extract_lists(
         attempt: AttemptData,
     ) -> tuple[list[str], list[str]]:
+        """Достает левый/правый списки из dataset с fallback по полям."""
         pairs = attempt.dataset.get("pairs", [])
-        options = attempt.dataset.get("options", [])
+
         left = [strip_html(str(p.get("first", ""))) for p in pairs]
-        right = [strip_html(str(o)) for o in options]
+
+        # Правая часть: сначала пробуем options, потом pairs.second
+        options = attempt.dataset.get("options", [])
+        if options:
+            right = [strip_html(str(o)) for o in options]
+        else:
+            right = [strip_html(str(p.get("second", ""))) for p in pairs]
+
         return left, right

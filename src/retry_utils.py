@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 def _contains_any(text: str, tokens: tuple[str, ...]) -> bool:
+    """Проверяет, содержит ли текст хотя бы один маркер из набора."""
     return any(token in text for token in tokens)
 
 
@@ -35,10 +36,6 @@ def _extract_retry_delay_seconds(error_text: str) -> float | None:
                 return None
     return None
 
-
-# ═══════════════════════════════════════════════════════════════
-#  Gemini API retry
-# ═══════════════════════════════════════════════════════════════
 
 _NON_RETRIABLE = (
     "404", "NOT_FOUND", "INVALID_ARGUMENT",

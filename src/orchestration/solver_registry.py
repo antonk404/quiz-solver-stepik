@@ -18,17 +18,10 @@ logger = logging.getLogger(__name__)
 
 
 class SolverRegistry:
-    """Реестр солверов.
-
-    Использование::
-
-        registry = SolverRegistry()
-        registry.register("choice", ChoiceSolver())
-
-        solver = registry.get("choice")
-    """
+    """Хранит соответствие `block_type -> solver` и выдает нужный обработчик."""
 
     def __init__(self) -> None:
+        """Создает пустой реестр солверов."""
         self._solvers: dict[str, BaseSolver] = {}
 
     def register(self, block_type: str, solver: BaseSolver) -> None:
@@ -49,10 +42,12 @@ class SolverRegistry:
         return self._solvers.get(block_type)
 
     def has(self, block_type: str) -> bool:
+        """Проверяет, зарегистрирован ли солвер для типа задания."""
         return block_type in self._solvers
 
     @property
     def supported_types(self) -> frozenset[str]:
+        """Возвращает множество всех зарегистрированных типов заданий."""
         return frozenset(self._solvers.keys())
 
 

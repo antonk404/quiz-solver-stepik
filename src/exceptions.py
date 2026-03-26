@@ -3,6 +3,7 @@ class AppError(Exception):
     message: str = "Произошла непредвиденная ошибка."
 
     def __init__(self, message: str | None = None) -> None:
+        """Инициализирует ошибку с пользовательским или стандартным сообщением."""
         super().__init__(message or self.message)
 
 

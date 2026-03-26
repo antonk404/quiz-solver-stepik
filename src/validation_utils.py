@@ -7,12 +7,7 @@ def validate_selected_indices(
     *,
     exc_type: type[Exception] = ValueError,
 ) -> None:
-    """Проверяет выбранные индексы для задач с вариантами ответа.
-
-    Проверка используется в двух слоях:
-    - AI-слой: валидация ответа модели;
-    - DOM-слой: защита перед кликами по элементам страницы.
-    """
+    """Проверяет, что selected-индексы не пусты, уникальны и в допустимом диапазоне."""
     if not selected_indices:
         raise exc_type("Список индексов для ответа пуст.")
 
@@ -39,7 +34,7 @@ def validate_ordered_indices(
     *,
     exc_type: type[Exception] = ValueError,
 ) -> None:
-    """Проверяет, что ordered_indices является перестановкой диапазона [0..items_count-1]."""
+    """Проверяет, что ordered-индексы образуют полную перестановку `0..items_count-1`."""
     if not ordered_indices:
         raise exc_type("Порядок индексов пуст.")
 

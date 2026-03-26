@@ -18,9 +18,5 @@ class BaseSolver(ABC):
         attempt: AttemptData,
         previous_reply: dict | None = None,
     ) -> dict:
-        """Возвращает reply-словарь.
-
-        Args:
-            previous_reply: предыдущий неверный ответ (None если первая попытка)
-        """
+        """Возвращает `reply`-словарь для отправки в Stepik API."""
         ...
