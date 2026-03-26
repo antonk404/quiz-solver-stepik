@@ -8,9 +8,6 @@ _env_path = Path(__file__).resolve().parents[1]/ ".env"
 
 class Settings(BaseSettings):
     stepik_course_url: str = Field(default="https://stepik.org/catalog", validation_alias="STEPIK_COURSE_URL")
-    stepik_email: str = Field(validation_alias="STEPIK_EMAIL")
-    stepik_password: str = Field(validation_alias="STEPIK_PASSWORD")
-    browser_headless: bool = Field(default=True, validation_alias="BROWSER_HEADLESS")
 
     gemini_api_key: str = Field(default="", validation_alias="GEMINI_API_KEY")
     gemini_model: str = Field(default="gemini-2.5-flash", validation_alias="GEMINI_MODEL")
