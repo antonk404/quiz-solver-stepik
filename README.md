@@ -141,8 +141,6 @@ STEPIK_COURSE_URL=https://stepik.org/course/12345/syllabus
 docker-compose up --build -d
 ```
 
-⏳ Примечание: первый запуск займет 2-5 минут (Docker скачивает Chromium).
-
 ### Шаг 4. Проверка авторизации Stepik
 
 Дополнительный вход через браузер не нужен: бот авторизуется по `STEPIK_EMAIL` / `STEPIK_PASSWORD` и `STEPIK_CLIENT_ID` / `STEPIK_CLIENT_SECRET` из `.env`.
