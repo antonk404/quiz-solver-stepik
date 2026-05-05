@@ -90,6 +90,7 @@ class StepProcessor:
 
     async def _attempt_loop(self, step_id, step, solver):
         """Повторяет попытки решения шага до лимита или успеха."""
+        previous_reply: dict | None = None
         for num in range(1, self.max_attempts + 1):
             try:
                 attempt = await self.api.create_attempt(step_id)
@@ -99,7 +100,7 @@ class StepProcessor:
                 )
 
                 reply = await solver.solve(
-                    self.api, self.ai, step, attempt,
+                    self.api, self.ai, step, attempt, previous_reply,
                 )
                 logger.debug("Reply: %s", reply)
 
@@ -117,6 +118,7 @@ class StepProcessor:
                         "❌ Неверно (%d/%d).",
                         num, self.max_attempts,
                     )
+                    previous_reply = reply
                     if num < self.max_attempts:
                         await asyncio.sleep(self.delay)
                         continue
