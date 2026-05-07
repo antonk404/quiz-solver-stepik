@@ -7,11 +7,13 @@ _env_path = Path(__file__).resolve().parents[1]/ ".env"
 
 
 class Settings(BaseSettings):
+    server_mode: bool = Field(default=False, validation_alias="SERVER_MODE")
+
     stepik_course_url: str = Field(default="https://stepik.org/catalog", validation_alias="STEPIK_COURSE_URL")
-    stepik_email: str = Field(validation_alias="STEPIK_EMAIL")
-    stepik_password: str = Field(validation_alias="STEPIK_PASSWORD")
-    stepik_client_id: str = Field(validation_alias="STEPIK_CLIENT_ID")
-    stepik_client_secret: str = Field(validation_alias="STEPIK_CLIENT_SECRET")
+    stepik_email: str = Field(default="", validation_alias="STEPIK_EMAIL")
+    stepik_password: str = Field(default="", validation_alias="STEPIK_PASSWORD")
+    stepik_client_id: str = Field(default="", validation_alias="STEPIK_CLIENT_ID")
+    stepik_client_secret: str = Field(default="", validation_alias="STEPIK_CLIENT_SECRET")
 
     gemini_api_key: str = Field(default="", validation_alias="GEMINI_API_KEY")
     gemini_model: str = Field(default="gemini-2.5-flash", validation_alias="GEMINI_MODEL")
@@ -41,6 +43,9 @@ class Settings(BaseSettings):
         """Нормализует `AI_PROVIDER` и проверяет обязательные ключи для выбранного режима."""
         provider = self.ai_provider.strip().lower()
         self.ai_provider = provider
+
+        if self.server_mode:
+            return self
 
         if provider not in {"gemini", "groq", "anthropic", "auto"}:
             raise ValueError("AI_PROVIDER должен быть одним из: gemini, groq, anthropic, auto.")

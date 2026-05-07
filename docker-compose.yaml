@@ -2,14 +2,23 @@ services:
   app:
     build: .
     init: true
+    hostname: solver
+    networks:
+      - default
+      - stepik-net
     depends_on:
       postgres:
         condition: service_healthy
+    ports:
+      - "8080:8080"
     environment:
-      STEPIK_EMAIL: ${STEPIK_EMAIL}
-      STEPIK_PASSWORD: ${STEPIK_PASSWORD}
-      STEPIK_CLIENT_ID: ${STEPIK_CLIENT_ID}
-      STEPIK_CLIENT_SECRET: ${STEPIK_CLIENT_SECRET}
+      # SERVER_MODE: ${SERVER_MODE:-false}
+      SERVER_MODE: ${SERVER_MODE:-true}
+
+      STEPIK_EMAIL: ${STEPIK_EMAIL:-}
+      STEPIK_PASSWORD: ${STEPIK_PASSWORD:-}
+      STEPIK_CLIENT_ID: ${STEPIK_CLIENT_ID:-}
+      STEPIK_CLIENT_SECRET: ${STEPIK_CLIENT_SECRET:-}
       STEPIK_COURSE_URL: ${STEPIK_COURSE_URL:-https://stepik.org/course/6667/syllabus}
 
       AI_PROVIDER: ${AI_PROVIDER:-auto}
@@ -47,3 +56,7 @@ services:
 
 volumes:
   postgres_data:
+
+networks:
+  stepik-net:
+    name: stepik-net

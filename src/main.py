@@ -66,5 +66,18 @@ async def main() -> None:
             await cache.close()
 
 
+def serve() -> None:
+    """Запускает HTTP API сервер (SERVER_MODE=true)."""
+    import uvicorn
+    from src.web.server import app
+
+    setup_logging()
+    logger.info("Запуск в server-режиме на порту 8080...")
+    uvicorn.run(app, host="0.0.0.0", port=8080)
+
+
 if __name__ == "__main__":
-    asyncio.run(main())
+    if settings.server_mode:
+        serve()
+    else:
+        asyncio.run(main())
