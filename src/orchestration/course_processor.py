@@ -27,7 +27,7 @@ class CourseProcessor:
         """Возвращает задержку между обработкой шагов."""
         return self._step.delay
 
-    async def process_course(self, course_id: int) -> int:
+    async def process_course(self, course_id: int, progress_callback=None) -> int:
         """Проходит все шаги курса и возвращает число успешно обработанных."""
         pairs = await self._api.get_course_steps(course_id)
         total = len(pairs)
@@ -42,6 +42,9 @@ class CourseProcessor:
             result = await self._step.process(step_id)
             if result.success:
                 solved += 1
+
+            if progress_callback is not None:
+                progress_callback(i, total)
 
             await asyncio.sleep(self._delay)
 

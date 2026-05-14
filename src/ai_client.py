@@ -190,6 +190,9 @@ class AIClient:
         model_name: str | None = None,
         temperature: float = 0.1,
         max_reasks: int = 2,
+        groq_api_key: str | None = None,
+        anthropic_api_key: str | None = None,
+        ai_provider: str | None = None,
     ):
         """Инициализирует клиентов, модели и базовые параметры генерации."""
         self.temperature = temperature
@@ -198,9 +201,11 @@ class AIClient:
             raise AIClientConfigError("max_reasks не может быть отрицательным.")
 
         self._region_unsupported = False
+        self._groq_api_key_override = groq_api_key
+        self._anthropic_api_key_override = anthropic_api_key
 
-        self.ai_provider: str = getattr(
-            settings, "ai_provider", "auto"
+        self.ai_provider: str = (
+            ai_provider or getattr(settings, "ai_provider", "auto")
         ).lower().strip()
 
         resolved_models = self._parse_model_candidates(
@@ -244,7 +249,7 @@ class AIClient:
 
     def _init_groq(self) -> None:
         """Инициализирует Groq-клиент и список моделей, если доступен ключ и SDK."""
-        groq_key = getattr(settings, "groq_api_key", "").strip()
+        groq_key = (self._groq_api_key_override or getattr(settings, "groq_api_key", "")).strip()
 
         if not groq_key or not GROQ_AVAILABLE:
             self.groq_client = None
@@ -265,7 +270,7 @@ class AIClient:
 
     def _init_anthropic(self) -> None:
         """Инициализирует Anthropic-клиент и список моделей, если доступен ключ и SDK."""
-        anthropic_key = getattr(settings, "anthropic_api_key", "").strip()
+        anthropic_key = (self._anthropic_api_key_override or getattr(settings, "anthropic_api_key", "")).strip()
 
         if not anthropic_key or not ANTHROPIC_AVAILABLE:
             self.anthropic_client = None
