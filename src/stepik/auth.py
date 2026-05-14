@@ -32,6 +32,19 @@ class StepikAuth:
         self._token: str = ""
         self._expires_at: float = 0.0
 
+    @classmethod
+    def from_token(cls, access_token: str, expires_in: int = 36000) -> "StepikAuth":
+        """Создаёт экземпляр с уже полученным токеном (без password grant)."""
+        instance = cls.__new__(cls)
+        instance._client_id = ""
+        instance._client_secret = ""
+        instance._email = ""
+        instance._password = ""
+        instance._refresh_margin = 300
+        instance._token = access_token
+        instance._expires_at = time.time() + expires_in
+        return instance
+
     @property
     def is_expired(self) -> bool:
         """Показывает, что токен истек или скоро истечет."""

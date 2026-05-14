@@ -1,10 +1,62 @@
 services:
   app:
     build: .
-    env_file: .env
     init: true
+    hostname: solver
+    networks:
+      - default
+      - stepik-net
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    environment:
+      # SERVER_MODE: ${SERVER_MODE:-false}
+      SERVER_MODE: ${SERVER_MODE:-true}
+
+      STEPIK_EMAIL: ${STEPIK_EMAIL:-}
+      STEPIK_PASSWORD: ${STEPIK_PASSWORD:-}
+      STEPIK_CLIENT_ID: ${STEPIK_CLIENT_ID:-}
+      STEPIK_CLIENT_SECRET: ${STEPIK_CLIENT_SECRET:-}
+      STEPIK_COURSE_URL: ${STEPIK_COURSE_URL:-https://stepik.org/course/6667/syllabus}
+
+      AI_PROVIDER: ${AI_PROVIDER:-auto}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.5-flash}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      GROQ_MODEL: ${GROQ_MODEL:-llama-3.3-70b-versatile}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-sonnet-4-6}
+      DATABASE_URL: postgresql://stepik:stepik@postgres:5432/stepik_cache
+
+      STEP_SOLVE_ATTEMPTS: ${STEP_SOLVE_ATTEMPTS:-5}
+      API_RETRY_ATTEMPTS: ${API_RETRY_ATTEMPTS:-2}
     deploy:
       resources:
         limits:
           memory: 512M
           cpus: "1.0"
+
+  postgres:
+    image: postgres:17-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: stepik
+      POSTGRES_PASSWORD: stepik
+      POSTGRES_DB: stepik_cache
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U stepik -d stepik_cache"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
+
+networks:
+  stepik-net:
+    name: stepik-net

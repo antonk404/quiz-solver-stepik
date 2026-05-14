@@ -7,11 +7,13 @@ _env_path = Path(__file__).resolve().parents[1]/ ".env"
 
 
 class Settings(BaseSettings):
+    server_mode: bool = Field(default=False, validation_alias="SERVER_MODE")
+
     stepik_course_url: str = Field(default="https://stepik.org/catalog", validation_alias="STEPIK_COURSE_URL")
-    stepik_email: str = Field(validation_alias="STEPIK_EMAIL")
-    stepik_password: str = Field(validation_alias="STEPIK_PASSWORD")
-    stepik_client_id: str = Field(validation_alias="STEPIK_CLIENT_ID")
-    stepik_client_secret: str = Field(validation_alias="STEPIK_CLIENT_SECRET")
+    stepik_email: str = Field(default="", validation_alias="STEPIK_EMAIL")
+    stepik_password: str = Field(default="", validation_alias="STEPIK_PASSWORD")
+    stepik_client_id: str = Field(default="", validation_alias="STEPIK_CLIENT_ID")
+    stepik_client_secret: str = Field(default="", validation_alias="STEPIK_CLIENT_SECRET")
 
     gemini_api_key: str = Field(default="", validation_alias="GEMINI_API_KEY")
     gemini_model: str = Field(default="gemini-2.5-flash", validation_alias="GEMINI_MODEL")
@@ -25,6 +27,12 @@ class Settings(BaseSettings):
 
     groq_api_key: str = Field(default="", validation_alias="GROQ_API_KEY")
     groq_model: str = Field(default="llama-3.3-70b-versatile", validation_alias="GROQ_MODEL")
+
+    anthropic_api_key: str = Field(default="", validation_alias="ANTHROPIC_API_KEY")
+    anthropic_model: str = Field(default="claude-sonnet-4-6", validation_alias="ANTHROPIC_MODEL")
+
+    database_url: str = Field(default="", validation_alias="DATABASE_URL")
+
     ai_provider: str = Field(default="gemini", validation_alias="AI_PROVIDER")
 
     next_step_text: str = Field(default="Следующий шаг,Далее,Next step,Continue", validation_alias="NEXT_STEP_TEXTS")
@@ -36,8 +44,11 @@ class Settings(BaseSettings):
         provider = self.ai_provider.strip().lower()
         self.ai_provider = provider
 
-        if provider not in {"gemini", "groq", "auto"}:
-            raise ValueError("AI_PROVIDER должен быть одним из: gemini, groq, auto.")
+        if self.server_mode:
+            return self
+
+        if provider not in {"gemini", "groq", "anthropic", "auto"}:
+            raise ValueError("AI_PROVIDER должен быть одним из: gemini, groq, anthropic, auto.")
 
         if provider == "gemini" and not self.gemini_api_key.strip():
             raise ValueError("Для AI_PROVIDER=gemini требуется GEMINI_API_KEY.")
@@ -45,11 +56,17 @@ class Settings(BaseSettings):
         if provider == "groq" and not self.groq_api_key.strip():
             raise ValueError("Для AI_PROVIDER=groq требуется GROQ_API_KEY.")
 
+        if provider == "anthropic" and not self.anthropic_api_key.strip():
+            raise ValueError("Для AI_PROVIDER=anthropic требуется ANTHROPIC_API_KEY.")
+
         if provider == "auto" and not (
-            self.gemini_api_key.strip() or self.groq_api_key.strip()
+            self.gemini_api_key.strip()
+            or self.groq_api_key.strip()
+            or self.anthropic_api_key.strip()
         ):
             raise ValueError(
-                "Для AI_PROVIDER=auto требуется хотя бы один ключ: GEMINI_API_KEY или GROQ_API_KEY."
+                "Для AI_PROVIDER=auto требуется хотя бы один ключ: "
+                "GEMINI_API_KEY, GROQ_API_KEY или ANTHROPIC_API_KEY."
             )
 
         return self
