@@ -4,8 +4,10 @@ services:
     init: true
     hostname: solver
     networks:
-      - default
-      - stepik-net
+      default:
+      stepik-net:
+        aliases:
+          - solver
     depends_on:
       postgres:
         condition: service_healthy
