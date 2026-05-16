@@ -12,6 +12,7 @@ from src.web.models import JobStatus, SolveRequest, UserResponse, UserUpsert
 logger = logging.getLogger(__name__)
 
 _jobs: dict[str, JobStatus] = {}
+_tasks: dict[str, asyncio.Task] = {}
 
 
 @asynccontextmanager
@@ -53,8 +54,18 @@ async def solve(request: SolveRequest, req: Request) -> dict:
     job_id = str(uuid.uuid4())
     _jobs[job_id] = JobStatus(job_id=job_id, status="running")
     user_repo = getattr(req.app.state, "user_repo", None)
-    asyncio.create_task(_run_solver(job_id, request, user_repo))
+    task = asyncio.create_task(_run_solver(job_id, request, user_repo))
+    _tasks[job_id] = task
     return {"job_id": job_id}
+
+
+@app.delete("/api/jobs/{job_id}")
+async def cancel_job(job_id: str) -> dict:
+    task = _tasks.get(job_id)
+    if task and not task.done():
+        task.cancel()
+    _jobs[job_id] = JobStatus(job_id=job_id, status="cancelled")
+    return {"job_id": job_id, "status": "cancelled"}
 
 
 @app.get("/api/jobs/{job_id}")
