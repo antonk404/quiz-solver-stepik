@@ -35,9 +35,6 @@ class Settings(BaseSettings):
 
     ai_provider: str = Field(default="gemini", validation_alias="AI_PROVIDER")
 
-    next_step_text: str = Field(default="Следующий шаг,Далее,Next step,Continue", validation_alias="NEXT_STEP_TEXTS")
-    cookie_accept_texts: str = Field(default="Принять,Accept,Allow,Хорошо", validation_alias="ACCEPT_TEXTS")
-
     @model_validator(mode="after")
     def validate_ai_provider_settings(self) -> "Settings":
         """Нормализует `AI_PROVIDER` и проверяет обязательные ключи для выбранного режима."""

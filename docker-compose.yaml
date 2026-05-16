@@ -17,12 +17,6 @@ services:
       # SERVER_MODE: ${SERVER_MODE:-false}
       SERVER_MODE: ${SERVER_MODE:-true}
 
-      STEPIK_EMAIL: ${STEPIK_EMAIL:-}
-      STEPIK_PASSWORD: ${STEPIK_PASSWORD:-}
-      STEPIK_CLIENT_ID: ${STEPIK_CLIENT_ID:-}
-      STEPIK_CLIENT_SECRET: ${STEPIK_CLIENT_SECRET:-}
-      STEPIK_COURSE_URL: ${STEPIK_COURSE_URL:-https://stepik.org/course/6667/syllabus}
-
       AI_PROVIDER: ${AI_PROVIDER:-auto}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.5-flash}
