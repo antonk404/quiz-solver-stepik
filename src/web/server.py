@@ -109,7 +109,11 @@ async def _run_solver(job_id: str, request: SolveRequest, user_repo: UserReposit
 
                 def on_progress(current: int, total: int) -> None:
                     percent = round(current / total * 100) if total else 0
-                    _jobs[job_id] = JobStatus(job_id=job_id, status="running", progress=str(percent))
+                    _jobs[job_id] = JobStatus(
+                        job_id=job_id, status="running",
+                        progress=str(percent),
+                        current_step=current, total_steps=total,
+                    )
 
                 solved = await course_proc.process_course(course_id, progress_callback=on_progress)
                 _jobs[job_id] = JobStatus(
