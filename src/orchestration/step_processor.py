@@ -9,6 +9,7 @@ from src.ai_client import AIClient
 from src.db.knowledge_cache import KnowledgeCache
 from src.config import settings
 from src.exceptions import (
+    AIClientConfigError,
     AIClientResponseError,
     InvalidAnswerIndicesError,
 )
@@ -20,10 +21,12 @@ from src.stepik import (
 
 from .solver_registry import SolverRegistry
 from .step_checker import StepChecker
+from src.stepik.solvers import reply_to_semantic, semantic_to_reply
 
 logger = logging.getLogger(__name__)
 
 _EXPECTED_ERRORS = (
+    AIClientConfigError,
     AIClientResponseError,
     InvalidAnswerIndicesError,
 )
@@ -93,14 +96,23 @@ class StepProcessor:
 
     async def _attempt_loop(self, step_id, step, solver):
         """Повторяет попытки решения шага до лимита или успеха."""
-        cached_reply: dict | None = None
+        cached_semantic: dict | None = None
         if self.cache:
-            cached_reply = await self.cache.get_reply(step_id, step.question_text)
+            cached_semantic = await self.cache.get_reply(step_id, step.question_text)
 
         previous_replies: list[dict] = []
         for num in range(1, self.max_attempts + 1):
             try:
                 attempt = await self.api.create_attempt(step_id)
+
+                cached_reply: dict | None = None
+                if cached_semantic is not None:
+                    cached_reply = semantic_to_reply(cached_semantic, step.block_type, attempt)
+                    if cached_reply is None:
+                        logger.warning("[CACHE] Шаг %d: не удалось сконвертировать кеш → удаляем.", step_id)
+                        if self.cache:
+                            await self.cache.delete_reply(step_id)
+                        cached_semantic = None
 
                 if cached_reply is not None:
                     reply = cached_reply
@@ -120,18 +132,19 @@ class StepProcessor:
 
                 if status == "correct":
                     logger.info("✅ Шаг %d решён!", step_id)
-                    if self.cache and cached_reply is None:
+                    if self.cache and cached_semantic is None:
+                        semantic = reply_to_semantic(reply, step.block_type, step, attempt)
                         await self.cache.save_reply(
-                            step_id, step.block_type, step.question_text, reply
+                            step_id, step.block_type, step.question_text, semantic
                         )
                     return ProcessStepResult(success=True)
 
                 if status == "wrong":
                     logger.warning("❌ Шаг %d неверно (%d/%d).", step_id, num, self.max_attempts)
                     previous_replies.append(reply)
-                    if cached_reply is not None:
+                    if cached_semantic is not None:
                         await self.cache.delete_reply(step_id)
-                        cached_reply = None
+                        cached_semantic = None
                     if num < self.max_attempts:
                         await asyncio.sleep(self.delay)
                         continue
@@ -141,7 +154,7 @@ class StepProcessor:
                 return ProcessStepResult(success=True)
 
             except _EXPECTED_ERRORS as exc:
-                cached_reply = None
+                cached_semantic = None
                 logger.error("Попытка %d: %s", num, exc)
                 if num < self.max_attempts:
                     continue

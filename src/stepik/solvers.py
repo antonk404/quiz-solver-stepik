@@ -239,3 +239,102 @@ def try_solve_choice(
         "✨ Choice решён программно: indices=%s", selected
     )
     return selected
+
+
+# ── Semantic cache helpers ──────────────────────────────────────
+
+def reply_to_semantic(
+    reply: dict,
+    block_type: str,
+    step: StepData,
+    attempt: AttemptData,
+) -> dict:
+    """Конвертирует индексный reply в текстовое представление для кеша."""
+    if block_type == "matching" and "ordering" in reply:
+        parsed = _parse_matching_dataset(attempt)
+        if parsed is not None:
+            terms, options = parsed
+            ordering = reply["ordering"]
+            mapping = {
+                terms[i]: options[ordering[i]]
+                for i in range(min(len(terms), len(ordering)))
+                if ordering[i] < len(options)
+            }
+            if len(mapping) == len(terms):
+                return {"matching_texts": mapping}
+
+    elif block_type == "sorting" and "ordering" in reply:
+        shuffled = _parse_sorting_dataset(attempt)
+        if shuffled is not None:
+            ordering = reply["ordering"]
+            sorted_texts = [shuffled[i] for i in ordering if i < len(shuffled)]
+            if len(sorted_texts) == len(ordering):
+                return {"sorted_texts": sorted_texts}
+
+    elif block_type == "choice" and "choices" in reply:
+        raw_opts = step.source.options or attempt.dataset.get("options", [])
+        if raw_opts:
+            selected_texts = []
+            for i, v in enumerate(reply["choices"]):
+                if v and i < len(raw_opts):
+                    opt = raw_opts[i]
+                    text = strip_html(opt.get("text", "") if isinstance(opt, dict) else str(opt))
+                    if text:
+                        selected_texts.append(text)
+            if selected_texts:
+                return {"choice_texts": selected_texts}
+
+    return reply
+
+
+def semantic_to_reply(
+    semantic: dict,
+    block_type: str,
+    attempt: AttemptData,
+) -> dict | None:
+    """Конвертирует текстовый кеш в индексный reply для текущего датасета."""
+    if "matching_texts" in semantic:
+        parsed = _parse_matching_dataset(attempt)
+        if parsed is None:
+            return None
+        terms, options = parsed
+        mapping = semantic["matching_texts"]
+        ordering: list[int] = []
+        used: set[int] = set()
+        for term in terms:
+            idx = _find_option_index(mapping.get(term, ""), options, used)
+            if idx is None:
+                return None
+            ordering.append(idx)
+            used.add(idx)
+        return {"ordering": ordering}
+
+    elif "sorted_texts" in semantic:
+        shuffled = _parse_sorting_dataset(attempt)
+        if shuffled is None:
+            return None
+        ordering = _build_sorting_order(semantic["sorted_texts"], shuffled)
+        return {"ordering": ordering} if ordering else None
+
+    elif "choice_texts" in semantic:
+        raw_opts = attempt.dataset.get("options", [])
+        if not raw_opts:
+            return None
+        option_texts = [
+            strip_html(o.get("text", "") if isinstance(o, dict) else str(o))
+            for o in raw_opts
+        ]
+        selected_indices: list[int] = []
+        used: set[int] = set()
+        for text in semantic["choice_texts"]:
+            idx = _find_option_index(text, option_texts, used)
+            if idx is None:
+                return None
+            selected_indices.append(idx)
+            used.add(idx)
+        choices = [False] * len(raw_opts)
+        for idx in selected_indices:
+            choices[idx] = True
+        return {"choices": choices}
+
+    return semantic
