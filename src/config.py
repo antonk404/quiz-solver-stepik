@@ -44,8 +44,8 @@ class Settings(BaseSettings):
         if self.server_mode:
             return self
 
-        if provider not in {"gemini", "groq", "anthropic", "auto"}:
-            raise ValueError("AI_PROVIDER должен быть одним из: gemini, groq, anthropic, auto.")
+        if provider not in {"gemini", "groq", "anthropic", "auto", "off"}:
+            raise ValueError("AI_PROVIDER должен быть одним из: gemini, groq, anthropic, auto, off.")
 
         if provider == "gemini" and not self.gemini_api_key.strip():
             raise ValueError("Для AI_PROVIDER=gemini требуется GEMINI_API_KEY.")

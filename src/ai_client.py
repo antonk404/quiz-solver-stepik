@@ -283,6 +283,9 @@ class AIClient:
 
     def _get_model_sequence(self) -> list[tuple[str, str]]:
         """Упорядоченный список ``(provider, model_name)``."""
+        if self.ai_provider == "off":
+            raise AIClientConfigError("AI отключён (AI_PROVIDER=off).")
+
         seq: list[tuple[str, str]] = []
         prov = self.ai_provider
 
