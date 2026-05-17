@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: stepik-solver
+  namespace: antlers
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: stepik-solver
+  template:
+    metadata:
+      labels:
+        app: stepik-solver
+    spec:
+      nodeSelector:
+        role: gateway
+      tolerations:
+        - key: node-role.kubernetes.io/control-plane
+          operator: Exists
+          effect: NoSchedule
+      containers:
+        - name: stepik-solver
+          image: antonk44/stepik-solver:latest
+          ports:
+            - containerPort: 8080
+          env:
+            - name: SERVER_MODE
+              value: "true"
+            - name: AI_PROVIDER
+              value: "auto"
+            - name: ANTHROPIC_MODEL
+              value: "claude-sonnet-4-6"
+            - name: GEMINI_MODEL
+              value: "gemini-2.5-flash"
+            - name: GROQ_MODEL
+              value: "llama-3.3-70b-versatile"
+            - name: STEP_SOLVE_ATTEMPTS
+              value: "5"
+            - name: API_RETRY_ATTEMPTS
+              value: "2"
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: stepik-solver-secret
+                  key: postgres-password
+            - name: DATABASE_URL
+              value: "postgresql://stepik:$(POSTGRES_PASSWORD)@shared-postgres:5432/stepik_cache"
+            - name: ANTHROPIC_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: stepik-solver-secret
+                  key: anthropic-api-key
+          resources:
+            requests:
+              cpu: 200m
+              memory: 256Mi
+            limits:
+              cpu: 1000m
+              memory: 512Mi
